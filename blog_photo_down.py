@@ -132,7 +132,8 @@ def create_gui():
     """GUI 인터페이스 생성"""
     root = tk.Tk()
     root.title("웹페이지 미디어 다운로더")
-    root.geometry("800x600")
+    root.geometry("900x700")  # 크기 증가
+    root.minsize(800, 600)    # 최소 크기 설정
     
     # URL 입력 프레임
     url_frame = tk.Frame(root)
@@ -167,9 +168,9 @@ def create_gui():
     log_widget = scrolledtext.ScrolledText(log_frame, height=20)
     log_widget.pack(fill=tk.BOTH, expand=True)
     
-    # 버튼 프레임
-    button_frame = tk.Frame(root)
-    button_frame.pack(fill=tk.X, padx=10, pady=5)
+    # 버튼 프레임 (배경색 추가로 확인 가능하게)
+    button_frame = tk.Frame(root, bg="#f0f0f0", relief="raised", bd=2)
+    button_frame.pack(fill=tk.X, padx=10, pady=10)
     
     def start_download():
         url = url_entry.get().strip()
@@ -211,14 +212,20 @@ def create_gui():
         thread = threading.Thread(target=download_thread, daemon=True)
         thread.start()
     
-    download_btn = tk.Button(button_frame, text="다운로드 시작", command=start_download, 
-                           bg="#4CAF50", fg="white", font=("Arial", 12, "bold"))
-    download_btn.pack(side=tk.LEFT, padx=5)
+    # 다운로드 시작 버튼 (크고 눈에 띄게)
+    download_btn = tk.Button(button_frame, text="🚀 다운로드 시작", command=start_download, 
+                           bg="#4CAF50", fg="white", font=("Arial", 14, "bold"), 
+                           height=2, width=15)
+    download_btn.pack(side=tk.LEFT, padx=10, pady=5)
     
     def clear_log():
         log_widget.delete(1.0, tk.END)
     
-    tk.Button(button_frame, text="로그 지우기", command=clear_log).pack(side=tk.LEFT, padx=5)
+    # 로그 지우기 버튼
+    clear_btn = tk.Button(button_frame, text="📝 로그 지우기", command=clear_log,
+                         bg="#FF5722", fg="white", font=("Arial", 10, "bold"),
+                         height=2, width=12)
+    clear_btn.pack(side=tk.LEFT, padx=10, pady=5)
     
     def open_folder():
         folder = folder_entry.get().strip()
@@ -235,7 +242,11 @@ def create_gui():
         else:
             messagebox.showwarning("경고", "폴더가 존재하지 않습니다.")
     
-    tk.Button(button_frame, text="폴더 열기", command=open_folder).pack(side=tk.LEFT, padx=5)
+    # 폴더 열기 버튼
+    folder_btn = tk.Button(button_frame, text="📁 폴더 열기", command=open_folder,
+                          bg="#2196F3", fg="white", font=("Arial", 10, "bold"),
+                          height=2, width=12)
+    folder_btn.pack(side=tk.LEFT, padx=10, pady=5)
     
     return root
 
