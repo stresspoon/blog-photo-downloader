@@ -52,20 +52,65 @@ def download_images_from_page(page_url, download_dir, log_widget):
 
         img_urls = set()
 
-        # --- 이미지 URL 수집 함수 ---
+        # --- 이미지 URL 수집 함수 (원본 이미지만 필터링) ---
         def collect(context_name):
             # img(src) + a(href)
             imgs = driver.find_elements(By.TAG_NAME, "img")
             links = driver.find_elements(By.TAG_NAME, "a")
             log_widget.insert(tk.END, f"🔍 [{context_name}] img 태그: {len(imgs)}, a 태그: {len(links)}\n")
 
+            # 블로그 메인 이미지만 필터링
+            def is_main_image(img_element, src_url):
+                try:
+                    # 1. 이미지 크기 확인 (너무 작은 이미지 제외)
+                    width = img_element.get_attribute('width') or img_element.get_attribute('naturalWidth')
+                    height = img_element.get_attribute('height') or img_element.get_attribute('naturalHeight')
+                    
+                    if width and height:
+                        w, h = int(width), int(height)
+                        if w < 200 or h < 150:  # 너무 작은 이미지 제외
+                            return False
+                    
+                    # 2. 썸네일이나 아이콘 URL 패턴 제외
+                    url_lower = src_url.lower()
+                    if any(keyword in url_lower for keyword in [
+                        'thumb', 'thumbnail', 'icon', 'logo', 'banner', 'avatar',
+                        'profile', 'btn', 'button', 'ad', 'adver', 'widget',
+                        '_s.jpg', '_m.jpg', '_t.jpg', 'small', 'mini'
+                    ]):
+                        return False
+                    
+                    # 3. 블로그 콘텐츠 영역 내 이미지인지 확인
+                    parent = img_element.find_element(By.XPATH, '..')
+                    parent_class = parent.get_attribute('class') or ""
+                    parent_id = parent.get_attribute('id') or ""
+                    
+                    # 네이버 블로그 콘텐츠 영역 클래스 확인
+                    if any(keyword in (parent_class + parent_id).lower() for keyword in [
+                        'content', 'post', 'article', 'entry', 'blog', 'main'
+                    ]):
+                        return True
+                    
+                    return True  # 기본적으로 포함
+                    
+                except:
+                    return True  # 에러 시 포함
+
             for img in imgs:
                 src = img.get_attribute('src') or ""
+                if not src:
+                    continue
+                    
                 path = urllib.parse.urlparse(src).path.lower()
                 ext = os.path.splitext(path)[1]
                 if ext in ('.jpg','.jpeg','.png','.gif','.webp'):
-                    full = urllib.parse.urljoin(page_url, src)
-                    img_urls.add(full)
+                    if is_main_image(img, src):
+                        full = urllib.parse.urljoin(page_url, src)
+                        img_urls.add(full)
+                        log_widget.insert(tk.END, f"  ✅ 메인 이미지 발견: {os.path.basename(path)}\n")
+                    else:
+                        log_widget.insert(tk.END, f"  ❌ 작은 이미지 제외: {os.path.basename(path)}\n")
+            
             for link in links:
                 href = link.get_attribute('href') or ""
                 path = urllib.parse.urlparse(href).path.lower()
@@ -100,27 +145,58 @@ def download_images_from_page(page_url, download_dir, log_widget):
             finally:
                 driver.switch_to.default_content()
 
-        # 3) 다운로드 실행
+        # 3) 다운로드 실행 (파일 크기 확인 포함)
         if not img_urls:
             log_widget.insert(tk.END, "⚠️ 페이지에서 찾은 이미지가 없습니다.\n")
         else:
             log_widget.insert(tk.END, f"✅총 이미지 URL: {len(img_urls)}\n")
+            downloaded_count = 0
+            
             for url in sorted(img_urls):
                 fn = os.path.basename(urllib.parse.urlparse(url).path)
+                if not fn:  # 파일명이 없는 경우 건너뛰기
+                    continue
+                    
                 save_path = os.path.join(download_dir, fn)
                 save_path = get_unique_filename(save_path)  # 중복 방지
+                
                 try:
                     headers = {'Referer': page_url}
+                    # 먼저 HEAD 요청으로 파일 크기 확인
+                    head_r = requests.head(url, headers=headers, timeout=10)
+                    content_length = head_r.headers.get('Content-Length')
+                    
+                    if content_length:
+                        file_size = int(content_length)
+                        if file_size < 10240:  # 10KB 미만 파일 제외
+                            log_widget.insert(tk.END, f"  ❌ 너무 작은 파일 제외: {fn} ({file_size} bytes)\n")
+                            continue
+                    
+                    # 실제 다운로드
                     r = requests.get(url, headers=headers, stream=True, timeout=10)
                     if r.status_code == 200:
+                        file_content = b""
+                        for chunk in r.iter_content(1024):
+                            file_content += chunk
+                        
+                        # 다운로드된 파일 크기 재확인
+                        if len(file_content) < 10240:  # 10KB 미만
+                            log_widget.insert(tk.END, f"  ❌ 작은 파일 제외: {fn} ({len(file_content)} bytes)\n")
+                            continue
+                        
                         with open(save_path, 'wb') as f:
-                            for chunk in r.iter_content(1024):
-                                f.write(chunk)
-                        log_widget.insert(tk.END, f"[OK] {os.path.basename(save_path)} 다운로드 완료\n")
+                            f.write(file_content)
+                        
+                        # 파일 크기를 읽기 쉽게 표시
+                        size_kb = len(file_content) / 1024
+                        downloaded_count += 1
+                        log_widget.insert(tk.END, f"[OK] {os.path.basename(save_path)} 다운로드 완료 ({size_kb:.1f}KB)\n")
                     else:
                         log_widget.insert(tk.END, f"[FAIL] {fn} ({r.status_code})\n")
                 except Exception as e:
                     log_widget.insert(tk.END, f"[ERROR] {fn} 다운로드 중 오류: {e}\n")
+            
+            log_widget.insert(tk.END, f"\n🎉 총 {downloaded_count}개의 메인 이미지를 다운로드했습니다!\n")
 
     except Exception as e:
         log_widget.insert(tk.END, f"❌ 스크립트 오류: {e}\n")
@@ -214,7 +290,7 @@ def create_gui():
     
     # 다운로드 시작 버튼 (크고 눈에 띄게)
     download_btn = tk.Button(button_frame, text="🚀 다운로드 시작", command=start_download, 
-                           bg="#4CAF50", fg="white", font=("Arial", 14, "bold"), 
+                           bg="#4CAF50", fg="black", font=("Arial", 14, "bold"), 
                            height=2, width=15)
     download_btn.pack(side=tk.LEFT, padx=10, pady=5)
     
@@ -223,7 +299,7 @@ def create_gui():
     
     # 로그 지우기 버튼
     clear_btn = tk.Button(button_frame, text="📝 로그 지우기", command=clear_log,
-                         bg="#FF5722", fg="white", font=("Arial", 10, "bold"),
+                         bg="#FF5722", fg="black", font=("Arial", 10, "bold"),
                          height=2, width=12)
     clear_btn.pack(side=tk.LEFT, padx=10, pady=5)
     
@@ -244,7 +320,7 @@ def create_gui():
     
     # 폴더 열기 버튼
     folder_btn = tk.Button(button_frame, text="📁 폴더 열기", command=open_folder,
-                          bg="#2196F3", fg="white", font=("Arial", 10, "bold"),
+                          bg="#2196F3", fg="black", font=("Arial", 10, "bold"),
                           height=2, width=12)
     folder_btn.pack(side=tk.LEFT, padx=10, pady=5)
     
