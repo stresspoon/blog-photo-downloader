@@ -26,15 +26,7 @@ jobs:
         
     - name: Build Windows executable
       run: |
-        pyinstaller --onefile --windowed --name=BlogPhotoDownloader-Windows ^
-          --strip --clean ^
-          --hidden-import=webdriver_manager.chrome ^
-          --hidden-import=selenium.webdriver.chrome.service ^
-          --exclude-module=matplotlib --exclude-module=numpy ^
-          --exclude-module=pandas --exclude-module=scipy ^
-          --exclude-module=PIL --exclude-module=pytest ^
-          --exclude-module=IPython --exclude-module=jupyter ^
-          blog_photo_down.py
+        pyinstaller --onefile --windowed --name=BlogPhotoDownloader-Windows --strip --clean --hidden-import=webdriver_manager.chrome --hidden-import=selenium.webdriver.chrome.service --exclude-module=matplotlib --exclude-module=numpy --exclude-module=pandas --exclude-module=scipy --exclude-module=PIL --exclude-module=pytest --exclude-module=IPython --exclude-module=jupyter blog_photo_down.py
           
     - name: Upload Windows executable
       uses: actions/upload-artifact@v4
