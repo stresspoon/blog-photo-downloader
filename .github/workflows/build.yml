@@ -26,7 +26,7 @@ jobs:
         
     - name: Build Windows executable
       run: |
-        pyinstaller --onefile --windowed --name=BlogPhotoDownloader-Windows --strip --clean --hidden-import=webdriver_manager.chrome --hidden-import=selenium.webdriver.chrome.service --exclude-module=matplotlib --exclude-module=numpy --exclude-module=pandas --exclude-module=scipy --exclude-module=PIL --exclude-module=pytest --exclude-module=IPython --exclude-module=jupyter blog_photo_down.py
+        pyinstaller --onefile --windowed --name=BlogPhotoDownloader-Windows --strip --clean --collect-all selenium --collect-all webdriver_manager --hidden-import=selenium --hidden-import=selenium.webdriver --hidden-import=selenium.webdriver.chrome --hidden-import=selenium.webdriver.chrome.webdriver --hidden-import=selenium.webdriver.chrome.service --hidden-import=selenium.webdriver.common --hidden-import=selenium.webdriver.common.by --hidden-import=selenium.webdriver.chromium --hidden-import=selenium.webdriver.chromium.webdriver --hidden-import=webdriver_manager --hidden-import=webdriver_manager.chrome --hidden-import=webdriver_manager.utils --hidden-import=webdriver_manager.driver --hidden-import=webdriver_manager.core --hidden-import=webdriver_manager.core.utils --exclude-module=matplotlib --exclude-module=numpy --exclude-module=pandas --exclude-module=scipy --exclude-module=PIL --exclude-module=pytest --exclude-module=IPython --exclude-module=jupyter blog_photo_down.py
           
     - name: Upload Windows executable
       uses: actions/upload-artifact@v4
@@ -55,8 +55,15 @@ jobs:
       run: |
         pyinstaller --onedir --windowed --name=BlogPhotoDownloader-macOS \
           --strip --clean \
-          --hidden-import=webdriver_manager.chrome \
-          --hidden-import=selenium.webdriver.chrome.service \
+          --collect-all selenium --collect-all webdriver_manager \
+          --hidden-import=selenium --hidden-import=selenium.webdriver \
+          --hidden-import=selenium.webdriver.chrome --hidden-import=selenium.webdriver.chrome.webdriver \
+          --hidden-import=selenium.webdriver.chrome.service --hidden-import=selenium.webdriver.common \
+          --hidden-import=selenium.webdriver.common.by --hidden-import=selenium.webdriver.chromium \
+          --hidden-import=selenium.webdriver.chromium.webdriver --hidden-import=webdriver_manager \
+          --hidden-import=webdriver_manager.chrome --hidden-import=webdriver_manager.utils \
+          --hidden-import=webdriver_manager.driver --hidden-import=webdriver_manager.core \
+          --hidden-import=webdriver_manager.core.utils \
           --exclude-module=matplotlib --exclude-module=numpy \
           --exclude-module=pandas --exclude-module=scipy \
           --exclude-module=PIL --exclude-module=pytest \
@@ -100,8 +107,15 @@ jobs:
       run: |
         pyinstaller --onefile --windowed --name=BlogPhotoDownloader-Linux \
           --strip --clean \
-          --hidden-import=webdriver_manager.chrome \
-          --hidden-import=selenium.webdriver.chrome.service \
+          --collect-all selenium --collect-all webdriver_manager \
+          --hidden-import=selenium --hidden-import=selenium.webdriver \
+          --hidden-import=selenium.webdriver.chrome --hidden-import=selenium.webdriver.chrome.webdriver \
+          --hidden-import=selenium.webdriver.chrome.service --hidden-import=selenium.webdriver.common \
+          --hidden-import=selenium.webdriver.common.by --hidden-import=selenium.webdriver.chromium \
+          --hidden-import=selenium.webdriver.chromium.webdriver --hidden-import=webdriver_manager \
+          --hidden-import=webdriver_manager.chrome --hidden-import=webdriver_manager.utils \
+          --hidden-import=webdriver_manager.driver --hidden-import=webdriver_manager.core \
+          --hidden-import=webdriver_manager.core.utils \
           --exclude-module=matplotlib --exclude-module=numpy \
           --exclude-module=pandas --exclude-module=scipy \
           --exclude-module=PIL --exclude-module=pytest \

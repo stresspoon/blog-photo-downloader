@@ -1,106 +1,109 @@
 #!/usr/bin/env python3
 """
-blog_photo_down.py를 exe 파일로 빌드하는 스크립트
+블로그 이미지 다운로더 빌드 스크립트
+macOS에서 실행 가능한 .app 파일을 생성합니다.
 """
 
-import os
 import subprocess
 import sys
+import os
 
-def build_exe():
-    """PyInstaller를 사용하여 exe 파일 생성"""
+def build_app():
+    """PyInstaller를 사용하여 macOS .app 파일 빌드"""
+    print("🚀 블로그 이미지 다운로더 빌드 시작...")
     
-    print("🔧 블로그 포토 다운로더 빌드 시작...")
-    
-    # PyInstaller 명령어 구성 (UPX 최적화 포함)
-    command = [
+    # PyInstaller 명령어 구성 (selenium 의존성 완전 포함)
+    cmd = [
         "pyinstaller",
-        "--onedir",  # 폴더로 생성 (macOS에서 권장)
-        "--windowed",  # 콘솔 창 숨기기 (GUI 애플리케이션)
-        "--name=BlogPhotoDownloader",  # 앱 파일명
-        "--upx-dir=/opt/homebrew/bin",  # UPX 압축 사용
-        "--strip",  # 디버그 심볼 제거
-        "--clean",  # 이전 빌드 파일 정리
-        "--hidden-import=webdriver_manager.chrome",
+        "--onedir",                               # 폴더로 빌드 (더 안정적)
+        "--windowed",                             # GUI 모드
+        "--name=BlogPhotoDownloader",             # 앱 이름
+        "--strip",                                # 파일 크기 최적화
+        "--clean",                                # 이전 빌드 정리
+        
+        # selenium 관련 모든 모듈 수집
+        "--collect-all", "selenium",
+        "--collect-all", "webdriver_manager",
+        
+        # 주요 selenium 모듈 명시적 포함
+        "--hidden-import=selenium",
+        "--hidden-import=selenium.webdriver",
+        "--hidden-import=selenium.webdriver.chrome",
+        "--hidden-import=selenium.webdriver.chrome.webdriver",
         "--hidden-import=selenium.webdriver.chrome.service",
-        # 불필요한 모듈들 제외하여 크기 최적화
+        "--hidden-import=selenium.webdriver.common",
+        "--hidden-import=selenium.webdriver.common.by",
+        "--hidden-import=selenium.webdriver.chromium",
+        "--hidden-import=selenium.webdriver.chromium.webdriver",
+        
+        # webdriver-manager 모듈 포함
+        "--hidden-import=webdriver_manager",
+        "--hidden-import=webdriver_manager.chrome", 
+        "--hidden-import=webdriver_manager.utils",
+        "--hidden-import=webdriver_manager.driver",
+        "--hidden-import=webdriver_manager.core",
+        "--hidden-import=webdriver_manager.core.utils",
+        
+        # 불필요한 대용량 모듈 제외
         "--exclude-module=matplotlib",
-        "--exclude-module=numpy",
+        "--exclude-module=numpy", 
         "--exclude-module=pandas",
         "--exclude-module=scipy",
         "--exclude-module=PIL",
         "--exclude-module=pytest",
         "--exclude-module=IPython",
         "--exclude-module=jupyter",
-        "blog_photo_down.py"
+        
+        "blog_photo_down.py"                      # 메인 스크립트
     ]
     
     try:
-        # 빌드 실행
         print("📦 PyInstaller 실행 중...")
-        result = subprocess.run(command, check=True, capture_output=True, text=True)
-        
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         print("✅ 빌드 성공!")
-        print(f"📁 생성된 앱: dist/BlogPhotoDownloader.app (macOS)")
-        print("\n🎉 빌드 완료! dist 폴더에서 앱 파일을 확인하세요.")
+        print(f"📁 빌드된 앱 위치: dist/BlogPhotoDownloader.app")
+        
+        # 앱 크기 확인
+        app_path = "dist/BlogPhotoDownloader.app"
+        if os.path.exists(app_path):
+            size = get_folder_size(app_path)
+            print(f"📊 앱 크기: {size:.1f} MB")
+        
+        print("\n🎉 빌드 완료! dist/BlogPhotoDownloader.app 파일을 실행해보세요.")
         
     except subprocess.CalledProcessError as e:
         print(f"❌ 빌드 실패: {e}")
-        print(f"오류 출력: {e.stderr}")
-        return False
-    except FileNotFoundError:
-        print("❌ PyInstaller가 설치되어 있지 않습니다.")
-        print("다음 명령어로 설치하세요: pip install pyinstaller")
-        return False
-    
-    return True
+        print(f"에러 출력: {e.stderr}")
+        sys.exit(1)
 
-def clean_build():
-    """빌드 파일들 정리"""
-    import shutil
-    
-    dirs_to_remove = ["build", "__pycache__"]
-    files_to_remove = ["BlogPhotoDownloader.spec"]
-    
-    for dir_name in dirs_to_remove:
-        if os.path.exists(dir_name):
-            print(f"🧹 {dir_name} 폴더 삭제...")
-            shutil.rmtree(dir_name)
-    
-    for file_name in files_to_remove:
-        if os.path.exists(file_name):
-            print(f"🧹 {file_name} 파일 삭제...")
-            os.remove(file_name)
+def get_folder_size(folder_path):
+    """폴더 크기 계산 (MB 단위)"""
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(folder_path):
+        for filename in filenames:
+            file_path = os.path.join(dirpath, filename)
+            if os.path.exists(file_path):
+                total_size += os.path.getsize(file_path)
+    return total_size / (1024 * 1024)  # MB로 변환
 
 if __name__ == "__main__":
-    print("=" * 50)
-    print("🚀 블로그 포토 다운로더 빌드 도구")
-    print("=" * 50)
+    # Python 및 필수 패키지 확인
+    print("🔍 환경 확인 중...")
     
-    # 필요한 패키지 확인
     try:
         import PyInstaller
-        print("✅ PyInstaller 설치됨")
+        print(f"✅ PyInstaller 버전: {PyInstaller.__version__}")
     except ImportError:
         print("❌ PyInstaller가 설치되어 있지 않습니다.")
-        print("설치하시겠습니까? (y/n): ", end="")
-        response = input().lower()
-        if response == 'y':
-            subprocess.run([sys.executable, "-m", "pip", "install", "pyinstaller"])
-        else:
-            print("PyInstaller가 필요합니다. 종료합니다.")
-            sys.exit(1)
+        print("설치 명령: pip install pyinstaller")
+        sys.exit(1)
     
-    # 빌드 실행
-    if build_exe():
-        print("\n🧹 빌드 파일 정리하시겠습니까? (y/n): ", end="")
-        response = input().lower()
-        if response == 'y':
-            clean_build()
-            print("✅ 정리 완료!")
+    try:
+        import selenium
+        print(f"✅ Selenium 버전: {selenium.__version__}")
+    except ImportError:
+        print("❌ Selenium이 설치되어 있지 않습니다.")
+        print("설치 명령: pip install -r requirements.txt")
+        sys.exit(1)
     
-    print("\n🎯 사용법:")
-    print("1. dist/BlogPhotoDownloader.app 파일을 Applications 폴더로 복사")
-    print("2. Chrome 브라우저가 설치되어 있어야 합니다")
-    print("3. 앱 파일을 더블클릭하여 웹페이지 이미지를 다운로드하세요!")
-    print("4. 첫 실행 시 보안 경고가 나오면 시스템 환경설정에서 허용해주세요") 
+    build_app() 
